@@ -147,6 +147,16 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--tint);outline-o
 .toast.show{opacity:1;transform:translate(-50%,0)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
+<script>
+(function(){
+  // iOS Home-Bildschirm-App: 100% Höhe ist dort um die Statusleiste zu kurz -> volle Bildschirmhöhe setzen
+  if(!(navigator.standalone||matchMedia('(display-mode: standalone)').matches))return;
+  function fit(){var land=matchMedia('(orientation: landscape)').matches;
+    var h=land?Math.min(screen.width,screen.height):Math.max(screen.width,screen.height);
+    document.documentElement.style.height=Math.max(h,innerHeight)+'px';}
+  fit();addEventListener('resize',fit);addEventListener('orientationchange',function(){setTimeout(fit,300);});
+})();
+</script>
 </head><body>
 
 <div id="scroller"><div id="app">
