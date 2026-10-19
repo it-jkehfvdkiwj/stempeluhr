@@ -1,0 +1,511 @@
+<!doctype html>
+<html lang="de"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="StempelUhr">
+<meta name="theme-color" content="#F2F2F7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<title>StempelUhr</title>
+<style>:root{color-scheme:light dark;padding-top:env(safe-area-inset-top,0px)}body{margin:0}[hidden]{display:none!important}
+.tabbar{padding-bottom:calc(4px + env(safe-area-inset-bottom,0px))!important}</style>
+<style>
+/* Layout: iOS-style tabbed app — sticky large title, grouped inset lists, fixed blurred tab bar */
+:root{
+  --bg:#F2F2F7; --card:#FFFFFF; --card2:#F7F7FA; --fg:#111114; --fg2:#6B6B76; --sep:rgba(60,60,67,.16);
+  --tint:#4B4FD8; --go:#14A06A; --stop:#E5484D; --brk:#E8890C; --track:rgba(120,120,128,.16);
+  --bar:rgba(242,242,247,.82);
+  --round:ui-rounded,"SF Pro Rounded",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  --sys:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#000000; --card:#1C1C1E; --card2:#2C2C2E; --fg:#F5F5F7; --fg2:#98989F; --sep:rgba(84,84,88,.6);
+  --tint:#8487FF; --go:#30C485; --stop:#FF6369; --brk:#FFA43A; --track:rgba(120,120,128,.3); --bar:rgba(20,20,22,.8); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#000000; --card:#1C1C1E; --card2:#2C2C2E; --fg:#F5F5F7; --fg2:#98989F; --sep:rgba(84,84,88,.6);
+  --tint:#8487FF; --go:#30C485; --stop:#FF6369; --brk:#FFA43A; --track:rgba(120,120,128,.3); --bar:rgba(20,20,22,.8); color-scheme:dark}
+*,*::before,*::after{box-sizing:border-box}
+html,body{background:var(--bg);height:100%;overflow:hidden}
+body{color:var(--fg);font-family:var(--sys);font-size:17px;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%;text-size-adjust:100%;display:flex;flex-direction:column}
+#scroller{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;padding:0}
+button:focus-visible,input:focus-visible{outline:2px solid var(--tint);outline-offset:2px;border-radius:10px}
+.num{font-variant-numeric:tabular-nums}
+#app{max-width:560px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 28px}
+.top{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding:6px 0 2px}
+.top h1{font-size:clamp(28px,8.5vw,34px);font-weight:700;letter-spacing:-.02em;margin:10px 0 0;text-wrap:balance;min-width:0}
+.navbtn{color:var(--tint);font-size:17px;font-weight:500;padding:6px 2px;min-height:44px}
+.navbtn[hidden]{display:none}
+.tab{display:flex;flex-direction:column;gap:8px;padding-top:6px}
+.sec-h{font-size:13px;font-weight:500;text-transform:uppercase;letter-spacing:.04em;color:var(--fg2);margin:20px 16px 2px;display:flex;justify-content:space-between;gap:8px}
+.foot{font-size:13px;color:var(--fg2);margin:4px 16px 0;line-height:1.4}
+.group{background:var(--card);border-radius:12px;overflow:hidden}
+.group.pad{padding:16px}
+.row{display:flex;align-items:center;gap:12px;min-height:44px;padding:11px 16px;position:relative;width:100%;text-align:left}
+.row+.row::before{content:"";position:absolute;top:0;left:16px;right:0;border-top:.5px solid var(--sep)}
+.row .lbl{flex:1;min-width:0;overflow-wrap:anywhere}
+.row .val,.row .inp,.row input{flex:none}
+.row .val{color:var(--fg2)}
+.row .chev{color:var(--fg2);opacity:.5;font-size:20px;line-height:1}
+.row.tap:active{background:var(--card2)}
+.small{font-size:13px;color:var(--fg2);margin-top:2px}
+.empty{padding:22px 16px;text-align:center;color:var(--fg2);font-size:15px;line-height:1.45}
+
+/* Stempeln */
+.hero{display:flex;flex-direction:column;align-items:center;gap:18px;padding:8px 0 4px}
+.ring-wrap{position:relative;width:min(260px,72vw);aspect-ratio:1;max-width:100%}
+.ring{width:100%;height:100%;transform:rotate(-90deg)}
+.ring circle{fill:none;stroke-width:14}
+.ring-track{stroke:var(--track)}
+.ring-prog{stroke:var(--tint);stroke-linecap:round;transition:stroke-dashoffset .6s ease,stroke .3s}
+.ring-prog.go{stroke:var(--go)}.ring-prog.brk{stroke:var(--brk)}.ring-prog.over{stroke:var(--go)}
+.ring-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center}
+.pill{font-size:13px;font-weight:600;padding:4px 10px;border-radius:999px;background:var(--track);color:var(--fg2)}
+.pill.go{background:color-mix(in srgb,var(--go) 16%,transparent);color:var(--go)}
+.pill.brk{background:color-mix(in srgb,var(--brk) 18%,transparent);color:var(--brk)}
+.timer{font-family:var(--round);font-size:clamp(40px,12vw,52px);font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1}
+.ring-sub{font-size:14px;color:var(--fg2)}
+.actions{display:flex;gap:10px;width:100%}
+.btn{flex:1;min-height:56px;border-radius:16px;font-size:18px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;transition:transform .12s,background .2s}
+.btn:active{transform:scale(.97)}
+.btn.go{background:var(--go);color:#fff}
+.btn.stop{background:var(--stop);color:#fff}
+.btn.brk{background:color-mix(in srgb,var(--brk) 16%,var(--card));color:var(--brk);flex:0 0 38%}
+.btn.brk.on{background:var(--brk);color:#fff}
+.btn[hidden]{display:none}
+.active-info{font-size:15px;color:var(--fg2)}
+.active-info b{color:var(--tint);font-weight:500}
+.week{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;align-items:end;height:120px;position:relative}
+.wk-col{display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end}
+.wk-bar{width:100%;max-width:28px;border-radius:6px;background:var(--tint);min-height:3px;position:relative}
+.wk-bar.zero{background:var(--track)}
+.wk-bar.today{background:var(--go)}
+.wk-d{font-size:12px;color:var(--fg2)}
+.wk-d.today{color:var(--fg);font-weight:600}
+.target-line{position:absolute;left:0;right:0;border-top:1.5px dashed var(--fg2);opacity:.45;pointer-events:none}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px;padding-top:14px;border-top:.5px solid var(--sep)}
+.stat .k{font-size:12px;color:var(--fg2)}
+.stat .v{font-family:var(--round);font-size:20px;font-weight:600;font-variant-numeric:tabular-nums;margin-top:2px}
+.pos{color:var(--go)}.neg{color:var(--stop)}
+
+/* Verlauf */
+.entry .t{font-weight:500}
+.entry .net{font-family:var(--round);font-weight:600;font-variant-numeric:tabular-nums}
+.entry .note{font-size:13px;color:var(--fg2);margin-top:3px;overflow-wrap:anywhere}
+.badge{font-size:11px;font-weight:600;color:var(--brk);margin-left:6px}
+
+/* Auswertung */
+.seg-nav{display:flex;align-items:center;justify-content:space-between;background:var(--card);border-radius:12px;padding:4px}
+.seg-nav button{width:44px;height:40px;color:var(--tint);font-size:22px;border-radius:9px}
+.seg-nav span{font-weight:600}
+.metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.metric{background:var(--card);border-radius:12px;padding:14px 16px}
+.metric .k{font-size:13px;color:var(--fg2)}
+.metric .v{font-family:var(--round);font-size:26px;font-weight:600;margin-top:4px;font-variant-numeric:tabular-nums}
+.month{display:flex;align-items:flex-end;gap:2px;height:130px;position:relative}
+.m-bar{flex:1;border-radius:3px 3px 1px 1px;background:var(--tint);min-height:2px}
+.m-bar.zero{background:var(--track)}
+.m-bar.we{opacity:.55}
+.m-axis{display:flex;justify-content:space-between;font-size:11px;color:var(--fg2);margin-top:6px}
+
+/* Einstellungen */
+.inp{width:96px;text-align:right;font:inherit;color:var(--fg);background:transparent;border:0;padding:4px 0}
+.chips{display:flex;gap:6px;flex-wrap:wrap;padding:12px 16px}
+.chip{width:40px;height:36px;border-radius:10px;background:var(--card2);color:var(--fg2);font-size:15px;font-weight:600}
+.chip.on{background:var(--tint);color:#fff}
+.switch{appearance:none;-webkit-appearance:none;width:51px;height:31px;border-radius:999px;background:var(--track);position:relative;cursor:pointer;transition:background .2s;flex:none;margin:0}
+.switch::after{content:"";position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.2);transition:transform .2s}
+.switch:checked{background:var(--go)}
+.switch:checked::after{transform:translateX(20px)}
+.danger{color:var(--stop)}
+.tintc{color:var(--tint)}
+
+/* Tab bar */
+.tabbar{flex:none;z-index:20;background:var(--bar);border-top:.5px solid var(--sep);padding:6px max(8px,env(safe-area-inset-right,0px)) 4px max(8px,env(safe-area-inset-left,0px))}
+.tabbar-in{max-width:560px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr)}
+.tb{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10.5px;font-weight:500;color:var(--fg2);padding:4px 0;min-height:48px}
+.tb svg{width:26px;height:26px}
+.tb.on{color:var(--tint)}
+
+/* Sheet */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:30;opacity:0;transition:opacity .25s}
+.scrim.show{opacity:1}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:31;background:var(--bg);border-radius:14px 14px 0 0;max-width:560px;margin:0 auto;padding:8px max(16px,env(safe-area-inset-right,0px)) calc(24px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));transform:translateY(100%);transition:transform .3s cubic-bezier(.2,.8,.2,1);max-height:90%;overflow:auto}
+.sheet.show{transform:none}
+.grab{width:36px;height:5px;border-radius:3px;background:var(--track);margin:0 auto 6px}
+.sheet-h{display:flex;align-items:center;justify-content:space-between;min-height:44px;margin-bottom:10px}
+.sheet-h b{font-size:17px}
+.sheet input[type=date],.sheet input[type=time]{-webkit-appearance:none;appearance:none;min-height:34px}
+.sheet input[type=date],.sheet input[type=time],.sheet input[type=number],.sheet input[type=text]{font:inherit;color:var(--tint);background:var(--card2);border:0;border-radius:8px;padding:6px 10px;text-align:right;min-width:0}
+.sheet input[type=text]{color:var(--fg);text-align:left;width:100%;background:transparent;padding:0}
+.calc{font-size:14px;color:var(--fg2);margin:10px 16px 0}
+.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);background:var(--fg);color:var(--bg);font-size:15px;font-weight:500;padding:10px 16px;border-radius:999px;opacity:0;transition:opacity .2s,transform .2s;z-index:40;pointer-events:none;max-width:calc(100% - 32px);text-align:center}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head><body>
+
+<div id="scroller"><div id="app">
+  <header class="top"><h1 id="title">Stempeln</h1><button class="navbtn" id="navAdd" hidden aria-label="Eintrag hinzufügen">Hinzufügen</button></header>
+
+  <section class="tab" id="tab-stempeln">
+    <div class="hero">
+      <div class="ring-wrap">
+        <svg class="ring" viewBox="0 0 220 220" aria-hidden="true"><circle class="ring-track" cx="110" cy="110" r="96"/><circle class="ring-prog" id="ringProg" cx="110" cy="110" r="96" stroke-dasharray="603.19" stroke-dashoffset="603.19"/></svg>
+        <div class="ring-center">
+          <span class="pill" id="pill">Nicht eingestempelt</span>
+          <div class="timer" id="timer">0:00:00</div>
+          <div class="ring-sub num" id="ringSub">Heute · Ziel 8:00 h</div>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn go" id="btnMain">Einstempeln</button>
+        <button class="btn brk" id="btnBreak" hidden>Pause</button>
+      </div>
+      <button class="active-info num" id="activeInfo" hidden></button>
+    </div>
+    <h2 class="sec-h"><span>Heute</span><span class="num" id="todaySum"></span></h2>
+    <div class="group" id="todayList"></div>
+    <h2 class="sec-h"><span id="weekTitle">Diese Woche</span><span class="num" id="weekRange"></span></h2>
+    <div class="group pad">
+      <div class="week" id="weekChart"></div>
+      <div class="stats">
+        <div class="stat"><div class="k">Ist</div><div class="v" id="wIst">0:00</div></div>
+        <div class="stat"><div class="k">Soll</div><div class="v" id="wSoll">0:00</div></div>
+        <div class="stat"><div class="k">Saldo gesamt</div><div class="v" id="wSaldo">0:00</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="tab" id="tab-verlauf" hidden>
+    <div id="histList"></div>
+  </section>
+
+  <section class="tab" id="tab-auswertung" hidden>
+    <div class="seg-nav"><button id="mPrev" aria-label="Vorheriger Monat">‹</button><span id="mLabel">Oktober 2026</span><button id="mNext" aria-label="Nächster Monat">›</button></div>
+    <div class="metrics">
+      <div class="metric"><div class="k">Gearbeitet</div><div class="v" id="mIst">0:00</div></div>
+      <div class="metric"><div class="k">Soll</div><div class="v" id="mSoll">0:00</div></div>
+      <div class="metric"><div class="k">Differenz</div><div class="v" id="mDiff">0:00</div></div>
+      <div class="metric"><div class="k" id="mExtraK">Ø pro Arbeitstag</div><div class="v" id="mExtra">0:00</div></div>
+    </div>
+    <h2 class="sec-h"><span>Stunden pro Tag</span></h2>
+    <div class="group pad"><div class="month" id="mChart"></div><div class="m-axis"><span>1.</span><span>10.</span><span>20.</span><span id="mLast">31.</span></div></div>
+    <div class="group" id="mDetail"></div>
+  </section>
+
+  <section class="tab" id="tab-einstellungen" hidden>
+    <h2 class="sec-h"><span>Arbeitszeit</span></h2>
+    <div class="group">
+      <label class="row"><span class="lbl">Sollstunden pro Woche</span><input class="inp num" id="setWeekly" type="number" inputmode="decimal" min="0" max="80" step="0.5"></label>
+      <div class="row" style="flex-direction:column;align-items:stretch;padding:0"><span style="padding:11px 16px 0">Arbeitstage</span><div class="chips" id="setDays"></div></div>
+      <label class="row"><span class="lbl">Ziel pro Arbeitstag</span><span class="val num" id="setDaily"></span></label>
+    </div>
+    <h2 class="sec-h"><span>Pausen</span></h2>
+    <div class="group">
+      <label class="row"><span class="lbl">Standardpause (Minuten)</span><input class="inp num" id="setDefPause" type="number" inputmode="numeric" min="0" max="240" step="5"></label>
+      <label class="row"><span class="lbl">Gesetzliche Pause abziehen</span><input type="checkbox" class="switch" id="setAuto"></label>
+    </div>
+    <p class="foot">Stempelst du keine Pause, wird die Standardpause abgezogen. Gestempelte Pausen ersetzen sie. Zusätzlich gilt § 4 ArbZG: über 6 Stunden mindestens 30 Minuten, über 9 Stunden mindestens 45 Minuten.</p>
+    <h2 class="sec-h"><span>Verdienst</span></h2>
+    <div class="group">
+      <label class="row"><span class="lbl">Stundenlohn (brutto)</span><input class="inp num" id="setWage" type="number" inputmode="decimal" min="0" step="0.01" placeholder="– €"></label>
+    </div>
+    <p class="foot">Optional. Mit Stundenlohn zeigt die Auswertung den Monatsverdienst.</p>
+    <h2 class="sec-h"><span>Daten</span></h2>
+    <div class="group">
+      <button class="row tap" id="btnExport"><span class="lbl tintc">Als CSV exportieren</span></button>
+      <button class="row tap" id="btnBackup"><span class="lbl tintc">Backup sichern</span></button>
+      <button class="row tap" id="btnRestore"><span class="lbl tintc">Backup laden</span></button>
+      <input type="file" id="fileRestore" accept="application/json,.json" hidden>
+      <div class="row"><span class="lbl">Speicherort</span><span class="val" id="storeInfo">Dieses Gerät</span></div>
+      <button class="row tap" id="btnWipe"><span class="lbl danger" id="wipeLbl">Alle Einträge löschen</span></button>
+    </div>
+    <p class="foot" id="storeFoot">Einträge werden gespeichert, sobald du ein- oder ausstempelst.</p>
+  </section>
+</div></div>
+
+<nav class="tabbar" aria-label="Bereiche"><div class="tabbar-in">
+  <button class="tb on" data-tab="stempeln"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9.5 2.5h5M12 2.5V5"/></svg>Stempeln</button>
+  <button class="tb" data-tab="verlauf"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/></svg>Verlauf</button>
+  <button class="tb" data-tab="auswertung"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 20V12M10 20V6M15 20v-9M20 20V9M3 20.5h18"/></svg>Auswertung</button>
+  <button class="tb" data-tab="einstellungen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>Einstellungen</button>
+</div></nav>
+
+<div class="scrim" id="scrim" hidden></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" hidden>
+  <div class="grab"></div>
+  <div class="sheet-h"><button class="navbtn" id="sCancel">Abbrechen</button><b id="sheetTitle">Eintrag</b><button class="navbtn" id="sSave" style="font-weight:600">Sichern</button></div>
+  <div class="group">
+    <label class="row" id="rDate"><span class="lbl">Datum</span><input type="date" id="fDate"></label>
+    <label class="row"><span class="lbl">Beginn</span><input type="time" id="fStart"></label>
+    <label class="row" id="rEnd"><span class="lbl">Ende</span><input type="time" id="fEnd"></label>
+    <label class="row" id="rPause"><span class="lbl">Pause (Minuten)</span><input type="number" id="fPause" inputmode="numeric" min="0" step="5" style="width:80px"></label>
+  </div>
+  <p class="calc num" id="fCalc"></p>
+  <div class="group" id="rNoteG" style="margin-top:16px"><label class="row"><input type="text" id="fNote" placeholder="Notiz (optional)" maxlength="140"></label></div>
+  <div class="group" id="rDel" style="margin-top:16px"><button class="row tap" id="sDelete" style="justify-content:center"><span class="danger" id="sDelLbl">Eintrag löschen</span></button></div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const LS='stempeluhr.v1';
+const S={settings:{weekly:40,days:[1,2,3,4,5],autoPause:true,wage:0,defaultPause:45},active:null,entries:{}};
+let stateRef=null,entriesCol=null,cloud=false;
+const DAYN=['So','Mo','Di','Mi','Do','Fr','Sa'];
+const MON=['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+
+/* ---------- storage ---------- */
+function loadLocal(){try{const r=JSON.parse(localStorage.getItem(LS)||'null');if(r){Object.assign(S.settings,r.settings||{});S.active=r.active||null;S.entries=r.entries||{};}}catch(e){}}
+function saveLocal(){try{localStorage.setItem(LS,JSON.stringify(S));}catch(e){}}
+const queues={};
+function enqueue(k,fn){queues[k]=(queues[k]||Promise.resolve()).then(fn).catch(e=>{console.warn(e);if(e&&e.code==='quota_exceeded')toast('Speicher voll – lösche alte Einträge');});return queues[k];}
+function persistState(){saveLocal();if(stateRef)enqueue('state',()=>stateRef.set({settings:S.settings,active:S.active}));}
+function persistEntry(e){S.entries[e.id]=e;saveLocal();if(entriesCol)enqueue('e'+e.id,()=>entriesCol.doc(e.id).set(e));}
+function deleteEntry(id){delete S.entries[id];saveLocal();if(entriesCol)enqueue('e'+id,()=>entriesCol.doc(id).delete());}
+const newId=()=>'e'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+
+async function initCloud(){
+  if(!window.claude||typeof window.claude.use!=='function')return;
+  try{
+    const [db,user]=await Promise.all([claude.use('db'),claude.use('user')]);
+    if(!db||!user)return;
+    const uid=await user.id();if(!uid)return;
+    const sRef=db.doc('data/users/'+uid+'/state');const col=sRef.collection('entries');
+    const [snap,es]=await Promise.all([sRef.get(),col.get()]);
+    if(!snap.exists&&es.empty){
+      await sRef.set({settings:S.settings,active:S.active});
+      for(const e of Object.values(S.entries))await col.doc(e.id).set(e);
+    }
+    stateRef=sRef;entriesCol=col;cloud=true;
+    const onErr=e=>console.warn('db',e);
+    sRef.onSnapshot(s=>{if(!s.exists)return;const d=s.data();S.settings=Object.assign({},S.settings,d.settings||{});S.active=d.active||null;saveLocal();render();},onErr);
+    col.onSnapshot(qs=>{const m={};qs.docs.forEach(d=>{m[d.id]=Object.assign({},d.data(),{id:d.id});});S.entries=m;saveLocal();render();},onErr);
+    render();
+  }catch(e){console.warn(e);}
+}
+
+/* ---------- time math ---------- */
+const pad=n=>String(n).padStart(2,'0');
+function hm(min,sign){const neg=min<0;min=Math.round(Math.abs(min));const s=Math.floor(min/60)+':'+pad(min%60);return (neg?'−':(sign&&min>0?'+':''))+s;}
+function hms(ms){const t=Math.max(0,Math.floor(ms/1000));return Math.floor(t/3600)+':'+pad(Math.floor(t/60)%60)+':'+pad(t%60);}
+const clock=ts=>{const d=new Date(ts);return pad(d.getHours())+':'+pad(d.getMinutes());};
+const dayKey=ts=>{const d=new Date(ts);return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());};
+const startOfDay=d=>{const x=new Date(d);x.setHours(0,0,0,0);return x;};
+function mondayOf(d){const x=startOfDay(d);x.setDate(x.getDate()-((x.getDay()+6)%7));return x;}
+function isoWeek(d){const t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));const n=t.getUTCDay()||7;t.setUTCDate(t.getUTCDate()+4-n);const y=new Date(Date.UTC(t.getUTCFullYear(),0,1));return Math.ceil(((t-y)/864e5+1)/7);}
+function legalPause(g){if(g<=360)return 0;if(g<=390)return g-360;if(g<=570)return 30;if(g<=585)return g-540;return 45;}
+function netOf(start,end,pauseMin){const g=Math.max(0,(end-start)/6e4);const st=pauseMin||0;const dp=Math.max(0,+S.settings.defaultPause||0);const base=st>0?st:dp;const lg=S.settings.autoPause?legalPause(g):0;const p=Math.min(g,Math.max(base,lg));const src=p<=st?'':(lg>base?'law':'std');return {net:Math.max(0,g-p),pause:p,auto:!!src,src};}
+function dailyTarget(date){const days=S.settings.days||[];if(!days.length)return 0;return days.includes(new Date(date).getDay())?(+S.settings.weekly||0)*60/days.length:0;}
+function activeNet(now){const a=S.active;if(!a)return 0;let p=a.pauseMs||0;if(a.breakStart)p+=now-a.breakStart;return Math.max(0,now-a.start-p)/6e4;}
+function workedByDay(){const m={};for(const e of Object.values(S.entries)){const k=dayKey(e.start);m[k]=(m[k]||0)+netOf(e.start,e.end,e.pauseMin).net;}return m;}
+function balance(byDay,now){
+  const keys=Object.keys(byDay);if(S.active)keys.push(dayKey(S.active.start));if(!keys.length)return 0;
+  keys.sort();const first=new Date(keys[0]+'T00:00');const today=startOfDay(now);
+  let soll=0;for(let d=new Date(first);d<today;d.setDate(d.getDate()+1))soll+=dailyTarget(d);
+  const tk=dayKey(now);const todayHas=byDay[tk]||S.active;if(todayHas)soll+=dailyTarget(now);
+  let ist=0;for(const k in byDay)ist+=byDay[k];ist+=activeNet(now);return ist-soll;
+}
+
+/* ---------- render ---------- */
+let tab='stempeln',monthCursor=new Date();monthCursor.setDate(1);
+const esc=s=>String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function entryRow(e){const r=netOf(e.start,e.end,e.pauseMin);const d=new Date(e.start);
+  return `<button class="row tap entry" data-id="${e.id}"><div class="lbl"><div class="t num">${DAYN[d.getDay()]}, ${pad(d.getDate())}.${pad(d.getMonth()+1)}. · ${clock(e.start)}–${clock(e.end)}</div><div class="small num">Pause ${Math.round(r.pause)} min${r.src==='law'?'<span class="badge">§4 ArbZG</span>':r.src==='std'?'<span class="badge">Standard</span>':''}</div>${e.note?`<div class="note">${esc(e.note)}</div>`:''}</div><span class="net">${hm(r.net)}</span><span class="chev">›</span></button>`;}
+
+function renderLive(){
+  const now=Date.now(),a=S.active,byDay=workedByDay(),tk=dayKey(now);
+  const today=(byDay[tk]||0)+(a&&dayKey(a.start)===tk?activeNet(now):0);
+  const target=dailyTarget(now);
+  $('timer').textContent=hms(today*6e4);
+  const pill=$('pill'),ring=$('ringProg');pill.className='pill';ring.classList.remove('go','brk');
+  if(a&&a.breakStart){pill.classList.add('brk');pill.textContent='Pause · '+hms(now-a.breakStart).replace(/^0:/,'');ring.classList.add('brk');}
+  else if(a){pill.classList.add('go');pill.textContent='Eingestempelt';ring.classList.add('go');}
+  else pill.textContent='Nicht eingestempelt';
+  const frac=target?Math.min(1,today/target):(today>0?1:0);
+  ring.setAttribute('stroke-dashoffset',(603.19*(1-frac)).toFixed(1));
+  $('ringSub').textContent=target?(today>=target?'Ziel erreicht · '+hm(today-target,true)+' h':'Noch '+hm(target-today)+' h bis '+hm(target)+' h'):'Kein Arbeitstag';
+  if(a){const p=Math.round(((a.pauseMs||0)+(a.breakStart?now-a.breakStart:0))/6e4);
+    const dp=+S.settings.defaultPause||0;$('activeInfo').innerHTML=`Seit ${clock(a.start)} · Pause ${p===0&&dp?dp+' min (Standard)':p+' min'} · <b>Beginn ändern</b>`;}
+  $('wSaldo').textContent=hm(balance(byDay,now),true);$('wSaldo').className='v '+(balance(byDay,now)>=0?'pos':'neg');
+}
+
+function renderStempeln(){
+  const a=S.active,now=Date.now();
+  const bm=$('btnMain');bm.className='btn '+(a?'stop':'go');bm.textContent=a?'Ausstempeln':'Einstempeln';
+  const bb=$('btnBreak');bb.hidden=!a;bb.classList.toggle('on',!!(a&&a.breakStart));bb.textContent=a&&a.breakStart?'Weiter':'Pause';
+  $('activeInfo').hidden=!a;
+  const tk=dayKey(now);const todays=Object.values(S.entries).filter(e=>dayKey(e.start)===tk).sort((x,y)=>x.start-y.start);
+  $('todayList').innerHTML=todays.length?todays.map(entryRow).join(''):`<div class="empty">${a?'Die laufende Schicht erscheint hier nach dem Ausstempeln.':'Noch nichts gestempelt. Tippe auf „Einstempeln“, wenn du anfängst.'}</div>`;
+  const byDay=workedByDay();const tot=todays.reduce((s,e)=>s+netOf(e.start,e.end,e.pauseMin).net,0);
+  $('todaySum').textContent=todays.length?hm(tot)+' h':'';
+  // week
+  const mon=mondayOf(now);let ist=0,soll=0,max=0;const cols=[];
+  for(let i=0;i<7;i++){const d=new Date(mon);d.setDate(mon.getDate()+i);const k=dayKey(d);let v=byDay[k]||0;if(a&&dayKey(a.start)===k)v+=activeNet(now);ist+=v;soll+=dailyTarget(d);max=Math.max(max,v,dailyTarget(d));cols.push({d,v,today:k===tk});}
+  max=Math.max(max,60);const tgt=(+S.settings.weekly||0)*60/Math.max(1,(S.settings.days||[]).length);
+  $('weekChart').innerHTML=cols.map(c=>`<div class="wk-col" title="${hm(c.v)} h"><div class="wk-bar ${c.v?'':'zero'} ${c.today&&c.v?'today':''}" style="height:${Math.max(3,c.v/max*92)}px"></div><span class="wk-d ${c.today?'today':''}">${DAYN[c.d.getDay()]}</span></div>`).join('')+(tgt?`<div class="target-line" style="bottom:${18+tgt/max*92}px"></div>`:'');
+  const end=new Date(mon);end.setDate(mon.getDate()+6);
+  $('weekTitle').textContent='KW '+isoWeek(mon);$('weekRange').textContent=`${pad(mon.getDate())}.${pad(mon.getMonth()+1)}. – ${pad(end.getDate())}.${pad(end.getMonth()+1)}.`;
+  $('wIst').textContent=hm(ist);$('wSoll').textContent=hm(soll);
+}
+
+function renderVerlauf(){
+  const list=Object.values(S.entries).sort((x,y)=>y.start-x.start);
+  if(!list.length){$('histList').innerHTML=`<div class="group"><div class="empty">Hier stehen alle gestempelten Schichten, nach Kalenderwoche sortiert.<br>Vergessen zu stempeln? Über „Hinzufügen“ trägst du eine Schicht nachträglich ein.</div></div>`;return;}
+  const groups=[];let cur=null;
+  for(const e of list){const m=mondayOf(e.start).getTime();if(!cur||cur.m!==m){cur={m,items:[],sum:0};groups.push(cur);}cur.items.push(e);cur.sum+=netOf(e.start,e.end,e.pauseMin).net;}
+  $('histList').innerHTML=groups.map(g=>{const m=new Date(g.m),s=new Date(g.m);s.setDate(s.getDate()+6);
+    return `<h2 class="sec-h"><span>KW ${isoWeek(m)} · ${pad(m.getDate())}.${pad(m.getMonth()+1)}.–${pad(s.getDate())}.${pad(s.getMonth()+1)}.</span><span class="num">${hm(g.sum)} h</span></h2><div class="group">${g.items.map(entryRow).join('')}</div>`;}).join('');
+}
+
+function renderAuswertung(){
+  const y=monthCursor.getFullYear(),mo=monthCursor.getMonth(),now=Date.now();
+  $('mLabel').textContent=MON[mo]+' '+y;
+  const days=new Date(y,mo+1,0).getDate();$('mLast').textContent=days+'.';
+  const byDay=workedByDay();const tk=dayKey(now);
+  let ist=0,soll=0,worked=0,longest=0,max=60;const vals=[];
+  for(let i=1;i<=days;i++){const d=new Date(y,mo,i);const k=dayKey(d);let v=byDay[k]||0;if(S.active&&dayKey(S.active.start)===k)v+=activeNet(now);vals.push({v,we:!dailyTarget(d)});ist+=v;if(v>0)worked++;longest=Math.max(longest,v);max=Math.max(max,v);
+    if(d<startOfDay(now)||(k===tk&&v>0))soll+=dailyTarget(d);}
+  $('mIst').textContent=hm(ist);$('mSoll').textContent=hm(soll);
+  const diff=ist-soll;$('mDiff').textContent=hm(diff,true);$('mDiff').className='v '+(diff>=0?'pos':'neg');
+  const wage=+S.settings.wage||0;
+  if(wage){$('mExtraK').textContent='Verdienst (brutto)';$('mExtra').textContent=(ist/60*wage).toLocaleString('de-DE',{style:'currency',currency:'EUR'});}
+  else{$('mExtraK').textContent='Ø pro Arbeitstag';$('mExtra').textContent=worked?hm(ist/worked):'0:00';}
+  $('mChart').innerHTML=vals.map((c,i)=>`<div class="m-bar ${c.v?'':'zero'} ${c.we?'we':''}" title="${i+1}.: ${hm(c.v)} h" style="height:${Math.max(2,c.v/max*124)}px"></div>`).join('');
+  $('mDetail').innerHTML=`<div class="row"><span class="lbl">Tage mit Einträgen</span><span class="val num">${worked}</span></div><div class="row"><span class="lbl">Längster Tag</span><span class="val num">${hm(longest)} h</span></div><div class="row"><span class="lbl">Überstundenkonto gesamt</span><span class="val num ${balance(byDay,now)>=0?'pos':'neg'}">${hm(balance(byDay,now),true)} h</span></div>`;
+}
+
+function renderSettings(){
+  const st=S.settings;
+  if(document.activeElement!==$('setWeekly'))$('setWeekly').value=st.weekly;
+  if(document.activeElement!==$('setWage'))$('setWage').value=st.wage||'';
+  if(document.activeElement!==$('setDefPause'))$('setDefPause').value=st.defaultPause??45;
+  $('setAuto').checked=!!st.autoPause;
+  $('setDays').innerHTML=[1,2,3,4,5,6,0].map(d=>`<button class="chip ${st.days.includes(d)?'on':''}" data-d="${d}" aria-pressed="${st.days.includes(d)}">${DAYN[d]}</button>`).join('');
+  $('setDaily').textContent=st.days.length?hm(st.weekly*60/st.days.length)+' h':'–';
+  $('storeInfo').textContent=cloud?'Dein Claude-Konto':'Nur dieses Gerät';
+  $('storeFoot').textContent=cloud?'Deine Einträge sind privat in deinem Claude-Konto gespeichert und auf allen Geräten gleich.':window.claude?'Einträge liegen im Browser-Speicher dieses Geräts. Öffne die App angemeldet bei Claude, damit sie in deinem Konto gesichert werden.':'Einträge liegen nur auf diesem Gerät. Sichere ab und zu ein Backup, zum Beispiel in iCloud Drive. Mit „Backup laden“ holst du Einträge aus einer anderen Version der App.';
+}
+
+function render(){
+  renderStempeln();renderLive();
+  if(tab==='verlauf')renderVerlauf();
+  if(tab==='auswertung')renderAuswertung();
+  if(tab==='einstellungen')renderSettings();
+}
+
+/* ---------- actions ---------- */
+function toast(t){const el=$('toast');el.textContent=t;el.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>el.classList.remove('show'),2200);}
+function buzz(){try{navigator.vibrate&&navigator.vibrate(12);}catch(e){}}
+$('btnMain').onclick=()=>{
+  const now=Date.now();buzz();
+  if(!S.active){S.active={start:now,pauseMs:0,breakStart:null};persistState();toast('Eingestempelt um '+clock(now));}
+  else{const a=S.active;let p=a.pauseMs||0;if(a.breakStart)p+=now-a.breakStart;
+    S.active=null;persistState();
+    if(now-a.start<60000){toast('Kürzer als eine Minute – nicht gespeichert');}
+    else{persistEntry({id:newId(),start:a.start,end:now,pauseMin:Math.round(p/6e4),note:''});toast('Ausgestempelt · '+hm(netOf(a.start,now,Math.round(p/6e4)).net)+' h');}}
+  render();
+};
+$('btnBreak').onclick=()=>{const a=S.active;if(!a)return;const now=Date.now();buzz();
+  if(a.breakStart){a.pauseMs=(a.pauseMs||0)+(now-a.breakStart);a.breakStart=null;toast('Pause beendet');}
+  else{a.breakStart=now;toast('Pause gestartet');}
+  persistState();render();};
+
+document.querySelectorAll('.tb').forEach(b=>b.onclick=()=>{tab=b.dataset.tab;
+  document.querySelectorAll('.tb').forEach(x=>x.classList.toggle('on',x===b));
+  ['stempeln','verlauf','auswertung','einstellungen'].forEach(t=>$('tab-'+t).hidden=t!==tab);
+  $('title').textContent=b.textContent.trim();$('navAdd').hidden=tab!=='verlauf';
+  $('scroller').scrollTop=0;render();});
+
+$('mPrev').onclick=()=>{monthCursor.setMonth(monthCursor.getMonth()-1);renderAuswertung();};
+$('mNext').onclick=()=>{monthCursor.setMonth(monthCursor.getMonth()+1);renderAuswertung();};
+
+$('setWeekly').onchange=e=>{const v=Math.max(0,Math.min(80,parseFloat(String(e.target.value).replace(',','.'))||0));S.settings.weekly=v;persistState();render();};
+$('setWage').onchange=e=>{S.settings.wage=Math.max(0,parseFloat(String(e.target.value).replace(',','.'))||0);persistState();render();};
+$('setDefPause').onchange=e=>{S.settings.defaultPause=Math.max(0,Math.min(240,parseInt(e.target.value,10)||0));persistState();render();};
+$('setAuto').onchange=e=>{S.settings.autoPause=e.target.checked;persistState();render();};
+$('setDays').onclick=e=>{const b=e.target.closest('.chip');if(!b)return;const d=+b.dataset.d;const s=new Set(S.settings.days);s.has(d)?s.delete(d):s.add(d);S.settings.days=[...s].sort();persistState();render();};
+
+let wipeArm=false;
+$('btnWipe').onclick=()=>{if(!wipeArm){wipeArm=true;$('wipeLbl').textContent='Nochmal tippen zum Löschen aller Einträge';setTimeout(()=>{wipeArm=false;$('wipeLbl').textContent='Alle Einträge löschen';},4000);return;}
+  wipeArm=false;Object.keys(S.entries).forEach(deleteEntry);$('wipeLbl').textContent='Alle Einträge löschen';toast('Alle Einträge gelöscht');render();};
+
+$('btnExport').onclick=async()=>{
+  const rows=[['Datum','Beginn','Ende','Pause (min)','Netto (h)','Notiz']];
+  Object.values(S.entries).sort((a,b)=>a.start-b.start).forEach(e=>{const r=netOf(e.start,e.end,e.pauseMin);const d=new Date(e.start);
+    rows.push([`${pad(d.getDate())}.${pad(d.getMonth()+1)}.${d.getFullYear()}`,clock(e.start),clock(e.end),Math.round(r.pause),(r.net/60).toFixed(2).replace('.',','),'"'+String(e.note||'').replace(/"/g,'""')+'"']);});
+  const csv='﻿'+rows.map(r=>r.join(';')).join('\n');
+  try{const dl=window.claude&&await claude.use('downloads');if(dl){const r=await dl.save({filename:'stempeluhr-'+dayKey(Date.now())+'.csv',data:csv});if(r&&r.status==='saved')toast('CSV gespeichert');return;}}
+  catch(e){if(e&&e.code&&e.code!=='unavailable')return;}
+  await shareFile('stempeluhr-'+dayKey(Date.now())+'.csv',csv,'text/csv');
+};
+async function shareFile(name,text,type){
+  try{const f=new File([text],name,{type});if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f]});return;}}catch(e){if(e&&e.name==='AbortError')return;}
+  try{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;document.body.appendChild(a);a.click();a.remove();toast('Datei gespeichert');return;}catch(e){}
+  try{await navigator.clipboard.writeText(text);toast('In die Zwischenablage kopiert');}catch(e){toast('Export auf diesem Gerät nicht möglich');}
+}
+$('btnBackup').onclick=async()=>{const json=JSON.stringify({app:'stempeluhr',v:1,settings:S.settings,entries:Object.values(S.entries)});
+  try{const dl=window.claude&&await claude.use('downloads');if(dl){await dl.save({filename:'stempeluhr-backup-'+dayKey(Date.now())+'.json',data:json});return;}}catch(e){if(e&&e.code&&e.code!=='unavailable')return;}
+  await shareFile('stempeluhr-backup-'+dayKey(Date.now())+'.json',json,'application/json');};
+$('btnRestore').onclick=()=>$('fileRestore').click();
+$('fileRestore').onchange=async e=>{const f=e.target.files&&e.target.files[0];e.target.value='';if(!f)return;
+  try{const d=JSON.parse(await f.text());if(!d||!Array.isArray(d.entries))throw 0;let n=0;
+    for(const x of d.entries){if(x&&x.id&&typeof x.start==='number'&&typeof x.end==='number'&&!S.entries[x.id]){persistEntry({id:String(x.id),start:x.start,end:x.end,pauseMin:+x.pauseMin||0,note:String(x.note||'').slice(0,140)});n++;}}
+    if(d.settings&&typeof d.settings==='object'){S.settings=Object.assign({},S.settings,d.settings);persistState();}
+    render();toast(n+' Einträge importiert');}catch(err){toast('Datei ist kein StempelUhr-Backup');}};
+
+/* ---------- sheet ---------- */
+let editing=null; // {mode:'entry'|'new'|'active', id}
+function openSheet(mode,id){
+  editing={mode,id};const now=new Date();
+  const isActive=mode==='active';
+  $('sheetTitle').textContent=isActive?'Beginn ändern':mode==='new'?'Neuer Eintrag':'Eintrag';
+  $('rEnd').hidden=$('rPause').hidden=$('rNoteG').hidden=isActive;$('rDel').hidden=mode!=='entry';
+  $('sDelLbl').textContent='Eintrag löschen';delArm=false;
+  if(mode==='entry'){const e=S.entries[id];$('fDate').value=dayKey(e.start);$('fStart').value=clock(e.start);$('fEnd').value=clock(e.end);$('fPause').value=e.pauseMin||0;$('fNote').value=e.note||'';}
+  else if(isActive){$('fDate').value=dayKey(S.active.start);$('fStart').value=clock(S.active.start);}
+  else{$('fDate').value=dayKey(now);$('fStart').value='08:00';$('fEnd').value='16:30';$('fPause').value=+S.settings.defaultPause||0;$('fNote').value='';}
+  calc();
+  $('scrim').hidden=false;$('sheet').hidden=false;
+  requestAnimationFrame(()=>{$('scrim').classList.add('show');$('sheet').classList.add('show');});
+}
+function closeSheet(){$('scrim').classList.remove('show');$('sheet').classList.remove('show');setTimeout(()=>{$('scrim').hidden=true;$('sheet').hidden=true;},300);editing=null;}
+function readSheet(){const d=$('fDate').value,s=$('fStart').value,e=$('fEnd').value;if(!d||!s)return null;
+  const start=new Date(d+'T'+s).getTime();if(isNaN(start))return null;
+  if(editing.mode==='active')return {start};
+  if(!e)return null;let end=new Date(d+'T'+e).getTime();if(end<=start)end+=864e5;
+  return {start,end,pauseMin:Math.max(0,parseInt($('fPause').value,10)||0),note:$('fNote').value.trim()};}
+function calc(){const r=editing&&readSheet();
+  if(!r){$('fCalc').textContent='';return;}
+  if(editing.mode==='active'){$('fCalc').textContent=r.start>Date.now()?'Beginn liegt in der Zukunft.':'Läuft seit '+hm((Date.now()-r.start)/6e4)+' h';return;}
+  const n=netOf(r.start,r.end,r.pauseMin);
+  $('fCalc').textContent=`Netto ${hm(n.net)} h`+(n.src==='law'?` · ${Math.round(n.pause)} min Pause nach § 4 ArbZG`:n.src==='std'?` · ${Math.round(n.pause)} min Standardpause`:'')+(r.end-r.start>864e5*0.5&&new Date(r.end).getDate()!==new Date(r.start).getDate()?' · endet am Folgetag':'');}
+['fDate','fStart','fEnd','fPause'].forEach(id=>$(id).addEventListener('input',calc));
+$('sCancel').onclick=closeSheet;$('scrim').onclick=closeSheet;
+$('sSave').onclick=()=>{const r=readSheet();if(!r){toast('Bitte Datum und Uhrzeiten ausfüllen');return;}
+  if(editing.mode==='active'){if(r.start>Date.now()){toast('Beginn darf nicht in der Zukunft liegen');return;}S.active.start=r.start;persistState();}
+  else{persistEntry(Object.assign({id:editing.mode==='entry'?editing.id:newId()},r));}
+  closeSheet();render();toast('Gesichert');};
+let delArm=false;
+$('sDelete').onclick=()=>{if(!delArm){delArm=true;$('sDelLbl').textContent='Wirklich löschen?';return;}deleteEntry(editing.id);closeSheet();render();toast('Eintrag gelöscht');};
+document.addEventListener('click',e=>{const r=e.target.closest('.entry');if(r)openSheet('entry',r.dataset.id);});
+$('navAdd').onclick=()=>openSheet('new');
+$('activeInfo').onclick=()=>{if(S.active)openSheet('active');};
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&editing)closeSheet();});
+
+/* ---------- boot ---------- */
+loadLocal();render();
+setInterval(renderLive,1000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)render();});
+initCloud();
+if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
+})();
+</script>
+
+</body></html>
