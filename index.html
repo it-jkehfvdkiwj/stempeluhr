@@ -77,6 +77,10 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--tint);outline-o
 .btn.brk{background:color-mix(in srgb,var(--brk) 16%,var(--card));color:var(--brk);flex:0 0 38%}
 .btn.brk.on{background:var(--brk);color:#fff}
 .btn[hidden]{display:none}
+.quick{width:100%;min-height:48px;border-radius:14px;font-size:16px;font-weight:600;background:color-mix(in srgb,var(--brk) 14%,var(--card));color:var(--brk);display:flex;align-items:center;justify-content:center;gap:8px;transition:transform .12s,background .2s}
+.quick:active{transform:scale(.97)}
+.quick.on{background:var(--brk);color:#fff}
+.quick[hidden]{display:none}
 .active-info{font-size:15px;color:var(--fg2)}
 .active-info b{color:var(--tint);font-weight:500}
 .week{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;align-items:end;height:120px;position:relative}
@@ -176,6 +180,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--tint);outline-o
         <button class="btn go" id="btnMain">Einstempeln</button>
         <button class="btn brk" id="btnBreak" hidden>Pause</button>
       </div>
+      <button class="quick num" id="btnQuick" hidden>45 min Pause abziehen</button>
       <button class="active-info num" id="activeInfo" hidden></button>
     </div>
     <h2 class="sec-h"><span>Heute</span><span class="num" id="todaySum"></span></h2>
@@ -313,7 +318,7 @@ function isoWeek(d){const t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.get
 function legalPause(g){if(g<=360)return 0;if(g<=390)return g-360;if(g<=570)return 30;if(g<=585)return g-540;return 45;}
 function netOf(start,end,pauseMin){const g=Math.max(0,(end-start)/6e4);const st=pauseMin||0;const dp=Math.max(0,+S.settings.defaultPause||0);const base=st>0?st:dp;const lg=S.settings.autoPause?legalPause(g):0;const p=Math.min(g,Math.max(base,lg));const src=p<=st?'':(lg>base?'law':'std');return {net:Math.max(0,g-p),pause:p,auto:!!src,src};}
 function dailyTarget(date){const days=S.settings.days||[];if(!days.length)return 0;return days.includes(new Date(date).getDay())?(+S.settings.weekly||0)*60/days.length:0;}
-function activeNet(now){const a=S.active;if(!a)return 0;let p=a.pauseMs||0;if(a.breakStart)p+=now-a.breakStart;return Math.max(0,now-a.start-p)/6e4;}
+function activeNet(now){const a=S.active;if(!a)return 0;let p=(a.pauseMs||0)+(a.quickMin||0)*6e4;if(a.breakStart)p+=now-a.breakStart;return Math.max(0,now-a.start-p)/6e4;}
 function workedByDay(){const m={};for(const e of Object.values(S.entries)){const k=dayKey(e.start);m[k]=(m[k]||0)+netOf(e.start,e.end,e.pauseMin).net;}return m;}
 function balance(byDay,now){
   const keys=Object.keys(byDay);if(S.active)keys.push(dayKey(S.active.start));if(!keys.length)return 0;
@@ -341,7 +346,7 @@ function renderLive(){
   const frac=target?Math.min(1,today/target):(today>0?1:0);
   ring.setAttribute('stroke-dashoffset',(603.19*(1-frac)).toFixed(1));
   $('ringSub').textContent=target?(today>=target?'Ziel erreicht · '+hm(today-target,true)+' h':'Noch '+hm(target-today)+' h bis '+hm(target)+' h'):'Kein Arbeitstag';
-  if(a){const p=Math.round(((a.pauseMs||0)+(a.breakStart?now-a.breakStart:0))/6e4);
+  if(a){const p=Math.round(((a.pauseMs||0)+(a.breakStart?now-a.breakStart:0))/6e4)+(a.quickMin||0);
     const dp=+S.settings.defaultPause||0;$('activeInfo').innerHTML=`Seit ${clock(a.start)} · Pause ${p===0&&dp?dp+' min (Standard)':p+' min'} · <b>Beginn ändern</b>`;}
   $('wSaldo').textContent=hm(balance(byDay,now),true);$('wSaldo').className='v '+(balance(byDay,now)>=0?'pos':'neg');
 }
@@ -351,6 +356,8 @@ function renderStempeln(){
   const bm=$('btnMain');bm.className='btn '+(a?'stop':'go');bm.textContent=a?'Ausstempeln':'Einstempeln';
   const bb=$('btnBreak');bb.hidden=!a;bb.classList.toggle('on',!!(a&&a.breakStart));bb.textContent=a&&a.breakStart?'Weiter':'Pause';
   $('activeInfo').hidden=!a;
+  const q=$('btnQuick'),dq=+S.settings.defaultPause||45;q.hidden=!a;
+  if(a){q.classList.toggle('on',!!a.quickMin);q.textContent=a.quickMin?`✓ ${a.quickMin} min Pause abgezogen · rückgängig`:`${dq} min Pause abziehen`;}
   const tk=dayKey(now);const todays=Object.values(S.entries).filter(e=>dayKey(e.start)===tk).sort((x,y)=>x.start-y.start);
   $('todayList').innerHTML=todays.length?todays.map(entryRow).join(''):`<div class="empty">${a?'Die laufende Schicht erscheint hier nach dem Ausstempeln.':'Noch nichts gestempelt. Tippe auf „Einstempeln“, wenn du anfängst.'}</div>`;
   const byDay=workedByDay();const tot=todays.reduce((s,e)=>s+netOf(e.start,e.end,e.pauseMin).net,0);
@@ -416,12 +423,16 @@ function buzz(){try{navigator.vibrate&&navigator.vibrate(12);}catch(e){}}
 $('btnMain').onclick=()=>{
   const now=Date.now();buzz();
   if(!S.active){S.active={start:now,pauseMs:0,breakStart:null};persistState();toast('Eingestempelt um '+clock(now));}
-  else{const a=S.active;let p=a.pauseMs||0;if(a.breakStart)p+=now-a.breakStart;
+  else{const a=S.active;let p=(a.pauseMs||0)+(a.quickMin||0)*6e4;if(a.breakStart)p+=now-a.breakStart;
     S.active=null;persistState();
     if(now-a.start<60000){toast('Kürzer als eine Minute – nicht gespeichert');}
     else{persistEntry({id:newId(),start:a.start,end:now,pauseMin:Math.round(p/6e4),note:''});toast('Ausgestempelt · '+hm(netOf(a.start,now,Math.round(p/6e4)).net)+' h');}}
   render();
 };
+$('btnQuick').onclick=()=>{const a=S.active;if(!a)return;buzz();
+  if(a.quickMin){a.quickMin=0;toast('Pause entfernt');}
+  else{a.quickMin=+S.settings.defaultPause||45;toast(a.quickMin+' min Pause abgezogen');}
+  persistState();render();};
 $('btnBreak').onclick=()=>{const a=S.active;if(!a)return;const now=Date.now();buzz();
   if(a.breakStart){a.pauseMs=(a.pauseMs||0)+(now-a.breakStart);a.breakStart=null;toast('Pause beendet');}
   else{a.breakStart=now;toast('Pause gestartet');}
