@@ -119,6 +119,9 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--tint);outline-o
 .m-axis{display:flex;justify-content:space-between;font-size:11px;color:var(--fg2);margin-top:6px}
 
 /* Einstellungen */
+.fld{flex:1 1 auto;min-width:0;width:100%;text-align:right;font:inherit;color:var(--fg);background:transparent;border:0;padding:4px 0}
+.row .fld{flex:1 1 auto}
+button:disabled{opacity:.5}
 .inp{width:96px;text-align:right;font:inherit;color:var(--fg);background:transparent;border:0;padding:4px 0}
 .chips{display:flex;gap:6px;flex-wrap:wrap;padding:12px 16px}
 .chip{width:40px;height:36px;border-radius:10px;background:var(--card2);color:var(--fg2);font-size:15px;font-weight:600}
@@ -234,6 +237,21 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--tint);outline-o
       <label class="row"><span class="lbl">Stundenlohn (brutto)</span><input class="inp num" id="setWage" type="number" inputmode="decimal" min="0" step="0.01" placeholder="– €"></label>
     </div>
     <p class="foot">Optional. Mit Stundenlohn zeigt die Auswertung den Monatsverdienst.</p>
+    <h2 class="sec-h"><span>Synchronisierung</span></h2>
+    <div id="syncGroup" hidden>
+      <div class="group" id="syncOut" hidden>
+        <label class="row"><span class="lbl">E-Mail</span><input class="fld" id="syncEmail" type="email" autocomplete="username" inputmode="email" autocapitalize="off" placeholder="name@beispiel.de"></label>
+        <label class="row"><span class="lbl">Passwort</span><input class="fld" id="syncPw" type="password" autocomplete="current-password" placeholder="mind. 6 Zeichen"></label>
+        <button class="row tap" id="syncLogin"><span class="lbl tintc" style="font-weight:600">Anmelden</span></button>
+        <button class="row tap" id="syncSignup"><span class="lbl tintc">Konto erstellen</span></button>
+        <button class="row tap" id="syncReset"><span class="lbl tintc">Passwort vergessen</span></button>
+      </div>
+      <div class="group" id="syncIn" hidden>
+        <div class="row"><span class="lbl">Angemeldet als</span><span class="val" id="syncWho" style="flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span></div>
+        <button class="row tap" id="syncLogout"><span class="lbl danger" id="syncLogoutLbl">Abmelden</span></button>
+      </div>
+    </div>
+    <p class="foot" id="syncFoot">Synchronisierung wird geladen …</p>
     <h2 class="sec-h"><span>Daten</span></h2>
     <div class="group">
       <button class="row tap" id="btnExport"><span class="lbl tintc">Als CSV exportieren</span></button>
@@ -416,8 +434,8 @@ function renderSettings(){
   $('setAuto').checked=!!st.autoPause;
   $('setDays').innerHTML=[1,2,3,4,5,6,0].map(d=>`<button class="chip ${st.days.includes(d)?'on':''}" data-d="${d}" aria-pressed="${st.days.includes(d)}">${DAYN[d]}</button>`).join('');
   $('setDaily').textContent=st.days.length?hm(st.weekly*60/st.days.length)+' h':'–';
-  $('storeInfo').textContent=cloud?'Dein Claude-Konto':'Nur dieses Gerät';
-  $('storeFoot').textContent=cloud?'Deine Einträge sind privat in deinem Claude-Konto gespeichert und auf allen Geräten gleich.':window.claude?'Einträge liegen im Browser-Speicher dieses Geräts. Öffne die App angemeldet bei Claude, damit sie in deinem Konto gesichert werden.':'Einträge liegen nur auf diesem Gerät. Sichere ab und zu ein Backup, zum Beispiel in iCloud Drive. Mit „Backup laden“ holst du Einträge aus einer anderen Version der App.';
+  $('storeInfo').textContent=cloud?(syncWho?'Synchronisiert':'Dein Claude-Konto'):'Nur dieses Gerät';
+  $('storeFoot').textContent=syncWho?'Deine Einträge liegen auf diesem Gerät und in deiner Firebase-Datenbank. Nur du kannst sie mit deinem Konto sehen.':cloud?'Deine Einträge sind privat in deinem Claude-Konto gespeichert und auf allen Geräten gleich.':window.claude?'Einträge liegen im Browser-Speicher dieses Geräts. Öffne die App angemeldet bei Claude, damit sie in deinem Konto gesichert werden.':'Einträge liegen nur auf diesem Gerät. Sichere ab und zu ein Backup, zum Beispiel in iCloud Drive. Mit „Backup laden“ holst du Einträge aus einer anderen Version der App.';
 }
 
 function render(){
@@ -530,6 +548,12 @@ $('navAdd').onclick=()=>openSheet('new');
 $('activeInfo').onclick=()=>{if(S.active)openSheet('active');};
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&editing)closeSheet();});
 
+/* ---------- sync hook ---------- */
+let syncWho=null;
+window.__stempel={S,
+  setBackend(s,c,who){stateRef=s;entriesCol=c;cloud=!!s;syncWho=who||null;render();},
+  applyState(settings,active){S.settings=Object.assign({},S.settings,settings||{});S.active=active||null;saveLocal();render();},
+  replaceEntries(m){S.entries=m;saveLocal();render();}};
 /* ---------- boot ---------- */
 loadLocal();render();
 setInterval(renderLive,1000);
@@ -539,4 +563,6 @@ if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceW
 })();
 </script>
 
+<script src="firebase-config.js"></script>
+<script type="module" src="sync.js"></script>
 </body></html>
