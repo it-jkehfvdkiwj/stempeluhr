@@ -154,6 +154,36 @@ button:disabled{opacity:.5}
 .calc{font-size:14px;color:var(--fg2);margin:10px 16px 0}
 .toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);background:var(--fg);color:var(--bg);font-size:15px;font-weight:500;padding:10px 16px;border-radius:999px;opacity:0;transition:opacity .2s,transform .2s;z-index:40;pointer-events:none;max-width:calc(100% - 32px);text-align:center}
 .toast.show{opacity:1;transform:translate(-50%,0)}
+/* Breite Bildschirme: Seitenleiste statt Tab-Leiste, Stempeln zweispaltig */
+.side-brand{display:none}
+@media (min-width:900px){
+  body{flex-direction:row}
+  .tabbar{order:-1;width:232px;flex:none;border-top:0;border-right:.5px solid var(--sep);padding:20px 12px;background:var(--card)}
+  .tabbar-in{display:flex;flex-direction:column;gap:4px;max-width:none;margin:0}
+  .side-brand{display:flex;align-items:center;gap:10px;font-size:19px;font-weight:700;letter-spacing:-.01em;padding:4px 12px 20px}
+  .side-brand i{width:28px;height:28px;border-radius:8px;background:var(--tint);display:grid;place-items:center;color:#fff;font-style:normal}
+  .side-brand svg{width:18px;height:18px}
+  .tb{flex-direction:row;justify-content:flex-start;gap:12px;font-size:15px;padding:9px 12px;min-height:40px;border-radius:10px}
+  .tb svg{width:22px;height:22px}
+  .tb:hover{background:var(--card2)}
+  .tb.on{background:color-mix(in srgb,var(--tint) 14%,transparent)}
+  #app{max-width:1120px;padding-left:40px;padding-right:40px;padding-block:12px 48px}
+  .top h1{font-size:34px}
+  #tab-stempeln{display:grid;grid-template-columns:minmax(300px,380px) minmax(0,1fr);column-gap:40px;row-gap:8px;align-content:start;grid-template-rows:auto auto auto auto 1fr}
+  #tab-stempeln>.hero{grid-column:1;grid-row:1/span 5;align-self:start;position:sticky;top:12px;background:var(--card);border-radius:18px;padding:28px 24px}
+  #tab-stempeln>:not(.hero){grid-column:2}
+  #tab-stempeln>.sec-h:first-of-type{margin-top:4px}
+  .ring-wrap{width:min(300px,100%)}
+  .actions{flex-wrap:wrap}
+  #tab-verlauf,#tab-einstellungen{max-width:720px}
+  .metrics{grid-template-columns:repeat(4,1fr)}
+  .seg-nav{max-width:360px}
+  .week{height:160px}
+  .sheet{top:50%;bottom:auto;left:50%;right:auto;width:min(480px,calc(100% - 48px));margin:0;border-radius:16px;padding:12px 20px 24px;opacity:0;transform:translate(-50%,-46%);transition:transform .25s,opacity .2s;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+  .sheet.show{transform:translate(-50%,-50%);opacity:1}
+  .grab{display:none}
+  .toast{bottom:32px;left:calc(50% + 116px)}
+}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 <script>
@@ -266,6 +296,7 @@ button:disabled{opacity:.5}
 </div></div>
 
 <nav class="tabbar" aria-label="Bereiche"><div class="tabbar-in">
+  <div class="side-brand"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5"/></svg></i>StempelUhr</div>
   <button class="tb on" data-tab="stempeln"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9.5 2.5h5M12 2.5V5"/></svg>Stempeln</button>
   <button class="tb" data-tab="verlauf"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/></svg>Verlauf</button>
   <button class="tb" data-tab="auswertung"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 20V12M10 20V6M15 20v-9M20 20V9M3 20.5h18"/></svg>Auswertung</button>
