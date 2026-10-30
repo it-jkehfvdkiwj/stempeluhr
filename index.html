@@ -400,10 +400,7 @@ function renderLive(){
   $('ringSub').textContent=target?(today>=target?'Ziel erreicht · '+hm(today-target,true)+' h':'Noch '+hm(target-today)+' h bis '+hm(target)+' h'):'Kein Arbeitstag';
   const re=$('ringEnd');re.hidden=true;
   if(a&&target&&today<target&&dayKey(a.start)===tk){
-    const cp=((a.pauseMs||0)+(a.breakStart?now-a.breakStart:0))/6e4+(a.quickMin||0);
-    let exp=cp>0?cp:(+S.settings.defaultPause||0);
-    if(S.settings.autoPause)exp=Math.max(exp,legalPause(target+exp));
-    const fin=now+((target-today)+Math.max(0,exp-cp))*6e4;
+    const fin=now+(target-today)*6e4;
     re.textContent='Feierabend um '+clock(fin)+(dayKey(fin)!==tk?' (morgen)':'');re.hidden=false;}
   if(a){const p=Math.round(((a.pauseMs||0)+(a.breakStart?now-a.breakStart:0))/6e4)+(a.quickMin||0);
     const dp=+S.settings.defaultPause||0;$('activeInfo').innerHTML=`Seit ${clock(a.start)} · Pause ${p===0&&dp?dp+' min (Standard)':p+' min'} · <b>Beginn ändern</b>`;}
