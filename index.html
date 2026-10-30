@@ -261,7 +261,7 @@ button:disabled{opacity:.5}
       <label class="row"><span class="lbl">Standardpause (Minuten)</span><input class="inp num" id="setDefPause" type="number" inputmode="numeric" min="0" max="240" step="5"></label>
       <label class="row"><span class="lbl">Gesetzliche Pause abziehen</span><input type="checkbox" class="switch" id="setAuto"></label>
     </div>
-    <p class="foot">Stempelst du keine Pause, wird die Standardpause abgezogen. Gestempelte Pausen ersetzen sie. Zusätzlich gilt § 4 ArbZG: über 6 Stunden mindestens 30 Minuten, über 9 Stunden mindestens 45 Minuten.</p>
+    <p class="foot">Die Standardpause ist der Wert für den Pause-Knopf beim Stempeln und für neue Einträge. Abgezogen wird nur Pause, die du stempelst oder per Knopf abziehst. Mit dem Schalter gilt zusätzlich § 4 ArbZG: über 6 Stunden mindestens 30 Minuten, über 9 Stunden mindestens 45 Minuten.</p>
     <h2 class="sec-h"><span>Verdienst</span></h2>
     <div class="group">
       <label class="row"><span class="lbl">Stundenlohn (brutto)</span><input class="inp num" id="setWage" type="number" inputmode="decimal" min="0" step="0.01" placeholder="– €"></label>
@@ -368,7 +368,7 @@ const startOfDay=d=>{const x=new Date(d);x.setHours(0,0,0,0);return x;};
 function mondayOf(d){const x=startOfDay(d);x.setDate(x.getDate()-((x.getDay()+6)%7));return x;}
 function isoWeek(d){const t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));const n=t.getUTCDay()||7;t.setUTCDate(t.getUTCDate()+4-n);const y=new Date(Date.UTC(t.getUTCFullYear(),0,1));return Math.ceil(((t-y)/864e5+1)/7);}
 function legalPause(g){if(g<=360)return 0;if(g<=390)return g-360;if(g<=570)return 30;if(g<=585)return g-540;return 45;}
-function netOf(start,end,pauseMin){const g=Math.max(0,(end-start)/6e4);const st=pauseMin||0;const dp=Math.max(0,+S.settings.defaultPause||0);const base=st>0?st:dp;const lg=S.settings.autoPause?legalPause(g):0;const p=Math.min(g,Math.max(base,lg));const src=p<=st?'':(lg>base?'law':'std');return {net:Math.max(0,g-p),pause:p,auto:!!src,src};}
+function netOf(start,end,pauseMin){const g=Math.max(0,(end-start)/6e4);const st=pauseMin||0;const base=st;const lg=S.settings.autoPause?legalPause(g):0;const p=Math.min(g,Math.max(base,lg));const src=p<=st?'':(lg>base?'law':'std');return {net:Math.max(0,g-p),pause:p,auto:!!src,src};}
 function dailyTarget(date){const days=S.settings.days||[];if(!days.length)return 0;return days.includes(new Date(date).getDay())?(+S.settings.weekly||0)*60/days.length:0;}
 function activeNet(now){const a=S.active;if(!a)return 0;let p=(a.pauseMs||0)+(a.quickMin||0)*6e4;if(a.breakStart)p+=now-a.breakStart;return Math.max(0,now-a.start-p)/6e4;}
 function workedByDay(){const m={};for(const e of Object.values(S.entries)){const k=dayKey(e.start);m[k]=(m[k]||0)+netOf(e.start,e.end,e.pauseMin).net;}return m;}
@@ -403,7 +403,7 @@ function renderLive(){
     const fin=now+(target-today)*6e4;
     re.textContent='Feierabend um '+clock(fin)+(dayKey(fin)!==tk?' (morgen)':'');re.hidden=false;}
   if(a){const p=Math.round(((a.pauseMs||0)+(a.breakStart?now-a.breakStart:0))/6e4)+(a.quickMin||0);
-    const dp=+S.settings.defaultPause||0;$('activeInfo').innerHTML=`Seit ${clock(a.start)} · Pause ${p===0&&dp?dp+' min (Standard)':p+' min'} · <b>Beginn ändern</b>`;}
+    $('activeInfo').innerHTML=`Seit ${clock(a.start)} · Pause ${p} min · <b>Beginn ändern</b>`;}
   $('wSaldo').textContent=hm(balance(byDay,now),true);$('wSaldo').className='v '+(balance(byDay,now)>=0?'pos':'neg');
 }
 
