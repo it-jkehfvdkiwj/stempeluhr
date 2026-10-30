@@ -372,6 +372,7 @@ function netOf(start,end,pauseMin){const g=Math.max(0,(end-start)/6e4);const st=
 function dailyTarget(date){const days=S.settings.days||[];if(!days.length)return 0;return days.includes(new Date(date).getDay())?(+S.settings.weekly||0)*60/days.length:0;}
 function activeNet(now){const a=S.active;if(!a)return 0;let p=(a.pauseMs||0)+(a.quickMin||0)*6e4;if(a.breakStart)p+=now-a.breakStart;return Math.max(0,now-a.start-p)/6e4;}
 function workedByDay(){const m={};for(const e of Object.values(S.entries)){const k=dayKey(e.start);m[k]=(m[k]||0)+netOf(e.start,e.end,e.pauseMin).net;}return m;}
+function firstDay(){let m=Infinity;for(const e of Object.values(S.entries))m=Math.min(m,e.start);if(S.active)m=Math.min(m,S.active.start);return m===Infinity?null:startOfDay(m);}
 function balance(byDay,now){
   const keys=Object.keys(byDay);if(S.active)keys.push(dayKey(S.active.start));if(!keys.length)return 0;
   keys.sort();const first=new Date(keys[0]+'T00:00');const today=startOfDay(now);
@@ -419,8 +420,8 @@ function renderStempeln(){
   const byDay=workedByDay();const tot=todays.reduce((s,e)=>s+netOf(e.start,e.end,e.pauseMin).net,0);
   $('todaySum').textContent=todays.length?hm(tot)+' h':'';
   // week
-  const mon=mondayOf(now);let ist=0,soll=0,max=0;const cols=[];
-  for(let i=0;i<7;i++){const d=new Date(mon);d.setDate(mon.getDate()+i);const k=dayKey(d);let v=byDay[k]||0;if(a&&dayKey(a.start)===k)v+=activeNet(now);ist+=v;soll+=dailyTarget(d);max=Math.max(max,v,dailyTarget(d));cols.push({d,v,today:k===tk});}
+  const mon=mondayOf(now);let ist=0,soll=0,max=0;const cols=[];const fd=firstDay();
+  for(let i=0;i<7;i++){const d=new Date(mon);d.setDate(mon.getDate()+i);const k=dayKey(d);let v=byDay[k]||0;if(a&&dayKey(a.start)===k)v+=activeNet(now);ist+=v;if(!fd||d>=fd)soll+=dailyTarget(d);max=Math.max(max,v,dailyTarget(d));cols.push({d,v,today:k===tk});}
   max=Math.max(max,60);const tgt=(+S.settings.weekly||0)*60/Math.max(1,(S.settings.days||[]).length);
   $('weekChart').innerHTML=cols.map(c=>`<div class="wk-col" title="${hm(c.v)} h"><div class="wk-bar ${c.v?'':'zero'} ${c.today&&c.v?'today':''}" style="height:${Math.max(3,c.v/max*92)}px"></div><span class="wk-d ${c.today?'today':''}">${DAYN[c.d.getDay()]}</span></div>`).join('')+(tgt?`<div class="target-line" style="bottom:${18+tgt/max*92}px"></div>`:'');
   const end=new Date(mon);end.setDate(mon.getDate()+6);
@@ -442,9 +443,9 @@ function renderAuswertung(){
   $('mLabel').textContent=MON[mo]+' '+y;
   const days=new Date(y,mo+1,0).getDate();$('mLast').textContent=days+'.';
   const byDay=workedByDay();const tk=dayKey(now);
-  let ist=0,soll=0,worked=0,longest=0,max=60;const vals=[];
+  let ist=0,soll=0,worked=0,longest=0,max=60;const vals=[];const fd=firstDay();
   for(let i=1;i<=days;i++){const d=new Date(y,mo,i);const k=dayKey(d);let v=byDay[k]||0;if(S.active&&dayKey(S.active.start)===k)v+=activeNet(now);vals.push({v,we:!dailyTarget(d)});ist+=v;if(v>0)worked++;longest=Math.max(longest,v);max=Math.max(max,v);
-    if(d<startOfDay(now)||(k===tk&&v>0))soll+=dailyTarget(d);}
+    if((!fd||d>=fd)&&(d<startOfDay(now)||(k===tk&&v>0)))soll+=dailyTarget(d);}
   $('mIst').textContent=hm(ist);$('mSoll').textContent=hm(soll);
   const diff=ist-soll;$('mDiff').textContent=hm(diff,true);$('mDiff').className='v '+(diff>=0?'pos':'neg');
   const wage=+S.settings.wage||0;
